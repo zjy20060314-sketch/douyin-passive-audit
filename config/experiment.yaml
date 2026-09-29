@@ -1,0 +1,16 @@
+{
+  "experiment_id": "example_001",
+  "protocol_version": "passive_v1",
+  "scenario_id": "passive_cold_start",
+  "first_session_at": "2026-01-01T09:00:00+08:00",
+  "days": 1,
+  "daily_offsets_minutes": [0, 660],
+  "items_per_session": 20,
+  "dwell_seconds": 5,
+  "read_attempts": 3,
+  "retry_base_seconds": 1,
+  "max_registration_gap_seconds": 300,
+  "max_pair_start_skew_seconds": 60,
+  "max_start_delay_seconds": 120,
+  "forbidden_actions": ["search", "like", "follow", "comment", "save", "share", "open_creator", "open_detail"]
+}

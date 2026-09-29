@@ -1,0 +1,9 @@
+pair_id,account_id,gender,platform,age_group,region,device_id,environment_id,environment_profile,batch_id,created_at,gender_set_at,status,avatar_code,profile_template,interest_selection,scenario_id,is_synthetic
+DY-P01,DY-A01,male,douyin,18-24,测试地区,MOCK-D01,MOCK-E01,test-profile,B01,2026-01-01T08:00:00+08:00,2026-01-01T08:01:00+08:00,READY,neutral-01,profile-01,none,passive_cold_start,true
+DY-P01,DY-A02,female,douyin,18-24,测试地区,MOCK-D02,MOCK-E02,test-profile,B01,2026-01-01T08:00:00+08:00,2026-01-01T08:01:00+08:00,READY,neutral-01,profile-01,none,passive_cold_start,true
+DY-P02,DY-A03,female,douyin,18-24,测试地区,MOCK-D03,MOCK-E03,test-profile,B01,2026-01-01T08:00:00+08:00,2026-01-01T08:01:00+08:00,READY,neutral-01,profile-01,none,passive_cold_start,true
+DY-P02,DY-A04,male,douyin,18-24,测试地区,MOCK-D04,MOCK-E04,test-profile,B01,2026-01-01T08:00:00+08:00,2026-01-01T08:01:00+08:00,READY,neutral-01,profile-01,none,passive_cold_start,true
+XHS-P01,XHS-A01,female,xiaohongshu,18-24,测试地区,MOCK-D05,MOCK-E05,test-profile,B01,2026-01-01T08:00:00+08:00,2026-01-01T08:01:00+08:00,READY,neutral-01,profile-01,none,passive_cold_start,true
+XHS-P01,XHS-A02,male,xiaohongshu,18-24,测试地区,MOCK-D06,MOCK-E06,test-profile,B01,2026-01-01T08:00:00+08:00,2026-01-01T08:01:00+08:00,READY,neutral-01,profile-01,none,passive_cold_start,true
+XHS-P02,XHS-A03,male,xiaohongshu,18-24,测试地区,MOCK-D07,MOCK-E07,test-profile,B01,2026-01-01T08:00:00+08:00,2026-01-01T08:01:00+08:00,READY,neutral-01,profile-01,none,passive_cold_start,true
+XHS-P02,XHS-A04,female,xiaohongshu,18-24,测试地区,MOCK-D08,MOCK-E08,test-profile,B01,2026-01-01T08:00:00+08:00,2026-01-01T08:01:00+08:00,READY,neutral-01,profile-01,none,passive_cold_start,true

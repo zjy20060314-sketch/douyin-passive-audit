@@ -1,0 +1,1 @@
+# Python 3.10+ is required. The collector uses only the Python standard library.

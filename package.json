@@ -1,0 +1,15 @@
+{
+  "name": "douyin-passive-audit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visible Edge-based passive collection and local topic audit for Douyin Web",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "playwright": "1.62.1"
+  },
+  "scripts": {
+    "check": "node --check audit/platforms/douyin_edge_bridge.cjs"
+  }
+}
