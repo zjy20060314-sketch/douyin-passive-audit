@@ -1,7 +1,7 @@
 # 隐私与数据边界
 
 - 仓库不包含账号、Cookie、浏览器资料、历史日志、截图或采集结果。
-- 登录状态只保存在本机 `runtime/douyin-edge-profile/`，该目录已被 Git 忽略。
+- 登录状态只保存在本机 `runtime/douyin-edge-profile/` 或 `runtime/xiaohongshu-edge-profile/`，这些目录已被 Git 忽略。
 - 采集结果默认写入本机 `data_live_debug/`，该目录已被 Git 忽略。
 - 不要把运行目录、浏览器资料或 `.env` 强制提交到仓库。
 - 工具只读取当前可见推荐内容，并进行本地字段提取与主题归类。

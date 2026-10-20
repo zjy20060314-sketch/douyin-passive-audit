@@ -7,6 +7,7 @@ from pathlib import Path
 
 
 REQUIRED_FIELDS = ("content_id", "title", "caption_text", "tags", "topic", "dwell_seconds")
+XHS_REQUIRED_NONEMPTY_FIELDS = ("content_id", "title", "content_type", "dwell_seconds")
 FORBIDDEN_ACTIONS = ("search", "like", "follow", "comment", "favorite", "share", "creator_page")
 
 
@@ -15,6 +16,7 @@ def main() -> int:
     parser.add_argument("output", type=Path)
     parser.add_argument("--expected-items", type=int)
     parser.add_argument("--expected-duration-minutes", type=float)
+    parser.add_argument("--platform", choices=("douyin", "xiaohongshu"), default="douyin")
     args = parser.parse_args()
     root = args.output.resolve()
     summary = json.loads((root / "summary.json").read_text(encoding="utf-8"))
@@ -35,7 +37,17 @@ def main() -> int:
     if len(set(ids)) != len(ids) or "" in ids:
         errors.append("内容ID缺失或重复")
     for index, row in enumerate(records, 1):
-        missing = [field for field in REQUIRED_FIELDS if row.get(field) in (None, "", [])]
+        if args.platform == "xiaohongshu":
+            missing = [field for field in XHS_REQUIRED_NONEMPTY_FIELDS
+                       if row.get(field) in (None, "", [])]
+            # A note may legitimately have no body or hashtags. In that case
+            # null and [] are valid observations; the keys must still exist.
+            if "caption_text" not in row:
+                missing.append("caption_text")
+            if not isinstance(row.get("tags"), list):
+                missing.append("tags")
+        else:
+            missing = [field for field in REQUIRED_FIELDS if row.get(field) in (None, "", [])]
         if missing:
             errors.append(f"第{index}条缺少字段：{', '.join(missing)}")
         dwell = row.get("dwell_seconds")

@@ -1,6 +1,8 @@
-# Douyin Passive Audit
+# Douyin / Xiaohongshu Passive Audit
 
 一个可复现的 Windows 本地工具：通过**可见的 Microsoft Edge**被动浏览抖音网页版推荐流，保存当前可见内容的结构化字段，并在本地提取题目、文案、Tags 与主题。
+
+同时支持小红书网页版发现页。小红书模式逐一点击可见笔记卡片，在详情弹窗中只读取内容 ID、标题、正文、Tags、图文或视频类型，然后返回发现页继续下一张。
 
 它不调用私有接口，不读取 Cookie，不搜索、不点赞、不关注、不评论、不收藏、不分享，也不进入创作者主页。首次运行时，使用者需要在独立 Edge 资料中自行登录；登录状态只保存在本机。
 
@@ -61,6 +63,36 @@ Set-ExecutionPolicy -Scope Process Bypass
 ```
 
 默认输出目录为 `data_live_debug/<时间戳>/`。默认不截图；只有显式传入 `--screenshots` 才会保存截图。
+
+## 小红书网页版
+
+首次运行三条小规模测试：
+
+```powershell
+.\smoke_test_xiaohongshu.ps1
+```
+
+脚本会打开独立的可见 Edge 资料。首次运行需要在五分钟内手动完成小红书登录；登录资料只保存在本机的 `runtime/xiaohongshu-edge-profile/`。
+
+普通运行：
+
+```powershell
+.\run_xiaohongshu.ps1 --items 3
+```
+
+持续运行三十分钟：
+
+```powershell
+.\run_xiaohongshu.ps1 --duration-minutes 30 --min-dwell-seconds 3 --max-dwell-seconds 15
+```
+
+小红书输出目录为 `data_xiaohongshu_debug/<时间戳>/`。内容字段只包含 `content_id`、`title`、`caption_text`、`tags` 和 `content_type`；时间戳、停留秒数、位置及运行状态仅用于过程验收。不会读取作者或互动量。笔记本身没有正文或 Tags 时分别记录为 `null` 和 `[]`，不会用标题或其他页面文字填充。
+
+验证输出：
+
+```powershell
+.\.venv\Scripts\python.exe .\verify_output.py .\data_xiaohongshu_debug\你的运行目录 --platform xiaohongshu
+```
 
 ## 输出文件
 

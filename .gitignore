@@ -4,6 +4,7 @@ node_modules/
 .tools/
 runtime/
 data_live_debug/
+data_xiaohongshu_debug/
 outputs/
 evidence/
 screenshots/

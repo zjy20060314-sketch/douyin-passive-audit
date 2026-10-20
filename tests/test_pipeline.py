@@ -11,7 +11,9 @@ from audit.configuration import load_config, plans, validate
 from audit.experiment.runner import ExperimentRunner
 from audit.models import AuditError
 from audit.platforms.douyin import DouyinAdapter
+from audit.platforms.xiaohongshu import XiaohongshuAdapter
 from live_douyin_pilot import classify_topic, extract_caption_text, extract_tags, extract_title
+from live_xiaohongshu_pilot import strip_tags_from_body
 from audit.platforms.mock import MockAdapter
 from audit.storage.store import DataStore, experiment_lock
 from audit.telemetry.logger import Logger
@@ -125,6 +127,12 @@ class PipelineTest(unittest.TestCase):
         self.assertIsNone(adapter.process)
         self.assertFalse(adapter.restore_position(2, 'ADVANCE_PENDING', None))
 
+    def test_xiaohongshu_adapter_is_real_but_lazy(self) -> None:
+        adapter = XiaohongshuAdapter()
+        self.assertFalse(adapter.synthetic)
+        self.assertIsNone(adapter.process)
+        self.assertFalse(adapter.restore_position(2, 'ADVANCE_PENDING', None))
+
     def test_local_topic_reader(self) -> None:
         self.assertEqual(classify_topic('海滩旅行vlog')[0], '旅行')
         self.assertEqual(classify_topic('股票基金投资入门')[0], '财经')
@@ -140,6 +148,10 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual(extract_title('#逆水寒手游 #年上'), '#逆水寒手游 #年上')
         self.assertEqual(extract_caption_text('#技巧\n如何开启手机双击亮屏？'),
                          '如何开启手机双击亮屏？')
+
+    def test_xiaohongshu_body_excludes_tags_without_inventing_text(self) -> None:
+        self.assertEqual(strip_tags_from_body('正文 #旅行 #秋天'), '正文')
+        self.assertIsNone(strip_tags_from_body('#旅行 #秋天'))
 
     def test_lock_rejects_second_writer(self) -> None:
         with experiment_lock(self.root):
