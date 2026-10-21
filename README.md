@@ -1,8 +1,10 @@
-# Douyin / Xiaohongshu Passive Audit
+# Douyin / Xiaohongshu / Bilibili Passive Audit
 
 一个可复现的 Windows 本地工具：通过**可见的 Microsoft Edge**被动浏览抖音网页版推荐流，保存当前可见内容的结构化字段，并在本地提取题目、文案、Tags 与主题。
 
 同时支持小红书网页版发现页。小红书模式逐一点击可见笔记卡片，在详情弹窗中只读取内容 ID、标题、正文、Tags、图文或视频类型，然后返回发现页继续下一张。
+
+同时支持哔哩哔哩网页版首页。哔哩哔哩模式逐一打开可见推荐视频，只读取 BV/av 内容 ID、标题、简介、Tags 和视频类型，然后返回首页继续下一条。
 
 它不调用私有接口，不读取 Cookie，不搜索、不点赞、不关注、不评论、不收藏、不分享，也不进入创作者主页。首次运行时，使用者需要在独立 Edge 资料中自行登录；登录状态只保存在本机。
 
@@ -92,6 +94,36 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 ```powershell
 .\.venv\Scripts\python.exe .\verify_output.py .\data_xiaohongshu_debug\你的运行目录 --platform xiaohongshu
+```
+
+## 哔哩哔哩网页版
+
+首次运行三条小规模测试：
+
+```powershell
+.\smoke_test_bilibili.ps1
+```
+
+脚本会打开独立的可见 Edge 资料。首次运行需要在五分钟内手动完成哔哩哔哩登录；登录资料只保存在本机的 `runtime/bilibili-edge-profile/`。
+
+普通运行：
+
+```powershell
+.\run_bilibili.ps1 --items 3
+```
+
+持续运行三十分钟：
+
+```powershell
+.\run_bilibili.ps1 --duration-minutes 30 --min-dwell-seconds 3 --max-dwell-seconds 15
+```
+
+哔哩哔哩输出目录为 `data_bilibili_debug/<时间戳>/`。记录字段为 `content_id`、`title`、`caption_text`、`tags` 和 `content_type`，默认不截图，也不读取作者或互动量。
+
+验证输出：
+
+```powershell
+.\.venv\Scripts\python.exe .\verify_output.py .\data_bilibili_debug\你的运行目录 --platform bilibili
 ```
 
 ## 输出文件

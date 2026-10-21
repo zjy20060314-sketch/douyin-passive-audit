@@ -2,7 +2,7 @@
   "name": "douyin-passive-audit",
   "version": "0.1.0",
   "private": true,
-  "description": "Visible Edge-based passive collection for Douyin and Xiaohongshu Web",
+  "description": "Visible Edge-based passive collection for Douyin, Xiaohongshu, and Bilibili Web",
   "engines": {
     "node": ">=20"
   },
@@ -10,6 +10,6 @@
     "playwright": "1.62.1"
   },
   "scripts": {
-    "check": "node --check audit/platforms/douyin_edge_bridge.cjs && node --check audit/platforms/xiaohongshu_edge_bridge.cjs"
+    "check": "node --check audit/platforms/douyin_edge_bridge.cjs && node --check audit/platforms/xiaohongshu_edge_bridge.cjs && node --check audit/platforms/bilibili_edge_bridge.cjs"
   }
 }

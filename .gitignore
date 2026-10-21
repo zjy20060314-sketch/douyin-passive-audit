@@ -5,6 +5,7 @@ node_modules/
 runtime/
 data_live_debug/
 data_xiaohongshu_debug/
+data_bilibili_debug/
 outputs/
 evidence/
 screenshots/

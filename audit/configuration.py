@@ -80,7 +80,7 @@ def validate(accounts: list[Account], cfg: ExperimentConfig) -> None:
         for key in (a.pair_id, a.account_id, a.batch_id):
             if not re.fullmatch(r"[A-Za-z0-9_-]+", key):
                 raise ValueError("账号、配对、批次编号格式错误")
-        if a.gender not in ("female", "male") or a.platform not in ("douyin", "xiaohongshu"):
+        if a.gender not in ("female", "male") or a.platform not in ("douyin", "xiaohongshu", "bilibili"):
             raise ValueError("性别或平台枚举错误")
         if a.account_id in ids or a.device_id in devices or a.environment_id in environments:
             raise ValueError("第一版要求账号、设备、环境编号各自唯一")

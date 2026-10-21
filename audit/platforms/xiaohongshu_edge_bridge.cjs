@@ -116,20 +116,24 @@ async function openNextCard() {
       return rows;
     }, [...visited]);
     if (candidates.length) {
-      const target = candidates[0];
-      await page.mouse.click(target.x, target.y);
-      const deadline = Date.now() + 12000;
-      while (Date.now() < deadline) {
-        await page.waitForTimeout(350);
-        const current = noteId(page.url());
-        if (current) {
-          visited.add(current);
-          lastContentId = current;
-          return current;
+      // Use the same visible click as a person. Sticky controls can cover an
+      // occasional card, so skip that card after one bounded attempt instead
+      // of aborting the whole passive session.
+      for (const target of candidates.slice(0, 4)) {
+        await page.mouse.click(target.x, target.y);
+        const deadline = Date.now() + 5000;
+        while (Date.now() < deadline) {
+          await page.waitForTimeout(350);
+          const current = noteId(page.url());
+          if (current) {
+            visited.add(current);
+            lastContentId = current;
+            return current;
+          }
         }
+        visited.add(target.id);
       }
-      visited.add(target.id);
-      throw fail('DETAIL_NOT_OPENED', `点击笔记${target.id}后未确认详情弹窗`, true);
+      continue;
     }
     const amount = await page.evaluate(() => Math.max(650, innerHeight * 0.85));
     await page.mouse.wheel(0, amount);

@@ -12,6 +12,7 @@ from audit.experiment.runner import ExperimentRunner
 from audit.models import AuditError
 from audit.platforms.douyin import DouyinAdapter
 from audit.platforms.xiaohongshu import XiaohongshuAdapter
+from audit.platforms.bilibili import BilibiliAdapter
 from live_douyin_pilot import classify_topic, extract_caption_text, extract_tags, extract_title
 from live_xiaohongshu_pilot import strip_tags_from_body
 from audit.platforms.mock import MockAdapter
@@ -129,6 +130,12 @@ class PipelineTest(unittest.TestCase):
 
     def test_xiaohongshu_adapter_is_real_but_lazy(self) -> None:
         adapter = XiaohongshuAdapter()
+        self.assertFalse(adapter.synthetic)
+        self.assertIsNone(adapter.process)
+        self.assertFalse(adapter.restore_position(2, 'ADVANCE_PENDING', None))
+
+    def test_bilibili_adapter_is_real_but_lazy(self) -> None:
+        adapter = BilibiliAdapter()
         self.assertFalse(adapter.synthetic)
         self.assertIsNone(adapter.process)
         self.assertFalse(adapter.restore_position(2, 'ADVANCE_PENDING', None))
