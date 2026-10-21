@@ -14,6 +14,7 @@ from audit.platforms.douyin import DouyinAdapter
 from audit.platforms.xiaohongshu import XiaohongshuAdapter
 from audit.platforms.bilibili import BilibiliAdapter
 from live_douyin_pilot import classify_topic, extract_caption_text, extract_tags, extract_title
+from live_bilibili_pilot import write_result_report
 from live_xiaohongshu_pilot import strip_tags_from_body
 from audit.platforms.mock import MockAdapter
 from audit.storage.store import DataStore, experiment_lock
@@ -159,6 +160,32 @@ class PipelineTest(unittest.TestCase):
     def test_xiaohongshu_body_excludes_tags_without_inventing_text(self) -> None:
         self.assertEqual(strip_tags_from_body('正文 #旅行 #秋天'), '正文')
         self.assertIsNone(strip_tags_from_body('#旅行 #秋天'))
+
+    def test_bilibili_report_uses_compact_previews(self) -> None:
+        output = self.root / 'bilibili-report'
+        output.mkdir()
+        long_caption = '这是一段很长的简介' * 30
+        tags = [f'标签{i}' for i in range(8)]
+        write_result_report(
+            output,
+            status='COMPLETED',
+            records=[{
+                'position': 1,
+                'content_id': 'BV1TEST',
+                'title': '测试标题',
+                'caption_text': long_caption,
+                'tags': tags,
+                'dwell_seconds': 6.25,
+            }],
+            duration_minutes=10,
+            elapsed_seconds=600.0,
+        )
+        report = (output / 'RESULT.md').read_text(encoding='utf-8')
+        self.assertIn('## 高频 Tags', report)
+        self.assertIn('## 内容清单', report)
+        self.assertIn('等8个', report)
+        self.assertIn('…', report)
+        self.assertNotIn(long_caption, report)
 
     def test_lock_rejects_second_writer(self) -> None:
         with experiment_lock(self.root):

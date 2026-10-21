@@ -8,6 +8,7 @@ import random
 import re
 import sys
 import time
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
@@ -104,22 +105,51 @@ def write_progress(output: Path, *, status: str, started_at: str, elapsed_second
 def write_result_report(output: Path, *, status: str, records: list[dict],
                         duration_minutes: float | None, elapsed_seconds: float,
                         error_code: str | None = None) -> None:
-    def cell(value: object) -> str:
-        return str(value or "").replace("|", "\\|").replace("\r", " ").replace("\n", " ")
+    def cell(value: object, limit: int | None = None) -> str:
+        text = re.sub(r"\s+", " ", str(value or "")).strip()
+        if not text:
+            return "—"
+        if limit is not None and len(text) > limit:
+            text = text[:limit - 1].rstrip() + "…"
+        return text.replace("|", "\\|")
+
+    dwell_values = [float(row["dwell_seconds"]) for row in records
+                    if isinstance(row.get("dwell_seconds"), (int, float))]
+    tag_counts = Counter(tag for row in records for tag in (row.get("tags") or []))
+    caption_count = sum(bool(row.get("caption_text")) for row in records)
+    tagged_count = sum(bool(row.get("tags")) for row in records)
 
     lines = ["# 哔哩哔哩网页版被动采集报告", "", f"- 状态：`{status}`",
              f"- 已采集：{len(records)} 条", f"- 请求时长：{duration_minutes or 0:g} 分钟",
              f"- 实际采集时长：{elapsed_seconds:.3f} 秒", "- 截图：关闭",
              "- 禁止动作：搜索、点赞、关注、评论、收藏、分享、进入创作者页均为 0"]
+    if dwell_values:
+        lines.append(f"- 停留时间：{min(dwell_values):.3f}–{max(dwell_values):.3f} 秒，"
+                     f"平均 {sum(dwell_values) / len(dwell_values):.3f} 秒")
+    lines.extend([f"- 简介：{caption_count} 条有内容，{len(records) - caption_count} 条为空",
+                  f"- Tags：{tagged_count} 条有标签，{len(records) - tagged_count} 条为空"])
     if error_code:
         lines.append(f"- 停止原因：`{error_code}`")
-    lines.extend(["", "| 位置 | 内容 ID | 标题 | 正文 | Tags | 类型 | 停留/秒 |",
-                  "|---:|---|---|---|---|---|---:|"])
+    lines.extend(["", "## 高频 Tags", ""])
+    if tag_counts:
+        lines.extend(["| Tag | 出现次数 |", "|---|---:|"])
+        for tag, count in tag_counts.most_common(15):
+            lines.append(f"| {cell(tag, 40)} | {count} |")
+    else:
+        lines.append("本次记录没有可见 Tags。")
+    lines.extend(["", "## 内容清单", "",
+                  "完整简介和全部 Tags 保存在 `observations.jsonl` 与 `exposures.csv`。",
+                  "", "| # | 内容 ID | 标题 | 简介摘要 | Tags 摘要 | 停留/秒 |",
+                  "|---:|---|---|---|---|---:|"])
     for row in records:
+        tags = row.get("tags") or []
+        tag_preview = "、".join(tags[:6])
+        if len(tags) > 6:
+            tag_preview += f" 等{len(tags)}个"
         lines.append("| " + " | ".join([
             str(row.get("position", "")), cell(row.get("content_id")),
-            cell(row.get("title")), cell(row.get("caption_text")),
-            cell("、".join(row.get("tags") or [])), cell(row.get("content_type")),
+            cell(row.get("title"), 60), cell(row.get("caption_text"), 100),
+            cell(tag_preview, 80),
             str(row.get("dwell_seconds", "")),
         ]) + " |")
     (output / "RESULT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
