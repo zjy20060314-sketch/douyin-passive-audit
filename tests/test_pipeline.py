@@ -13,9 +13,9 @@ from audit.models import AuditError
 from audit.platforms.douyin import DouyinAdapter
 from audit.platforms.xiaohongshu import XiaohongshuAdapter
 from audit.platforms.bilibili import BilibiliAdapter
-from live_douyin_pilot import classify_topic, extract_caption_text, extract_tags, extract_title
-from live_bilibili_pilot import write_result_report
-from live_xiaohongshu_pilot import strip_tags_from_body
+from audit.cli.douyin import classify_topic, extract_caption_text, extract_tags, extract_title
+from audit.cli.bilibili import write_result_report
+from audit.cli.xiaohongshu import strip_tags_from_body
 from audit.platforms.mock import MockAdapter
 from audit.storage.store import DataStore, experiment_lock
 from audit.telemetry.logger import Logger

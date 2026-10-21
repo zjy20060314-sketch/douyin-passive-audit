@@ -1,4 +1,4 @@
-"""Small, passive end-to-end pilot for the visible Xiaohongshu Web adapter."""
+"""Small, passive end-to-end pilot for the visible Douyin Web adapter."""
 from __future__ import annotations
 
 import argparse
@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 from audit.models import Account, AuditError
-from audit.platforms.xiaohongshu import XiaohongshuAdapter
+from audit.platforms.douyin import DouyinAdapter
 
 
 TOPICS: list[tuple[str, tuple[str, ...]]] = [
@@ -66,16 +66,6 @@ def extract_title(text: str | None) -> str | None:
     return caption.splitlines()[0] if caption else None
 
 
-def strip_tags_from_body(text: str | None) -> str | None:
-    """Keep note prose separate from tags; do not invent prose for tag-only notes."""
-    lines: list[str] = []
-    for line in (text or "").splitlines():
-        cleaned = re.sub(r"#([^\s#，。！？、；：,.!?;:]+)", "", line).strip()
-        if cleaned:
-            lines.append(cleaned)
-    return "\n".join(lines) or None
-
-
 def write_csv(output: Path, records: list[dict]) -> None:
     if not records:
         return
@@ -107,19 +97,19 @@ def write_result_report(output: Path, *, status: str, records: list[dict],
     def cell(value: object) -> str:
         return str(value or "").replace("|", "\\|").replace("\r", " ").replace("\n", " ")
 
-    lines = ["# 小红书网页版被动采集报告", "", f"- 状态：`{status}`",
+    lines = ["# 抖音网页版被动采集报告", "", f"- 状态：`{status}`",
              f"- 已采集：{len(records)} 条", f"- 请求时长：{duration_minutes or 0:g} 分钟",
              f"- 实际采集时长：{elapsed_seconds:.3f} 秒", "- 截图：关闭",
              "- 禁止动作：搜索、点赞、关注、评论、收藏、分享、进入创作者页均为 0"]
     if error_code:
         lines.append(f"- 停止原因：`{error_code}`")
-    lines.extend(["", "| 位置 | 内容 ID | 标题 | 正文 | Tags | 类型 | 停留/秒 |",
-                  "|---:|---|---|---|---|---|---:|"])
+    lines.extend(["", "| 位置 | 内容 ID | 作者 | 题目 | 文案 | Tags | 主题 | 停留/秒 |",
+                  "|---:|---|---|---|---|---|---|---:|"])
     for row in records:
         lines.append("| " + " | ".join([
-            str(row.get("position", "")), cell(row.get("content_id")),
+            str(row.get("position", "")), cell(row.get("content_id")), cell(row.get("author")),
             cell(row.get("title")), cell(row.get("caption_text")),
-            cell("、".join(row.get("tags") or [])), cell(row.get("content_type")),
+            cell("、".join(row.get("tags") or [])), cell(row.get("topic")),
             str(row.get("dwell_seconds", "")),
         ]) + " |")
     (output / "RESULT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -127,8 +117,8 @@ def write_result_report(output: Path, *, status: str, records: list[dict],
 
 def test_account() -> Account:
     stamp = datetime.now().astimezone().isoformat(timespec="seconds")
-    return Account(pair_id="DEBUG", account_id="XHS-WEB-TEST", gender="UNSPECIFIED",
-                   platform="xiaohongshu", age_group="UNSPECIFIED", region="UNSPECIFIED",
+    return Account(pair_id="DEBUG", account_id="DY-WEB-TEST", gender="UNSPECIFIED",
+                   platform="douyin", age_group="UNSPECIFIED", region="UNSPECIFIED",
                    device_id="EDGE-DEDICATED", environment_id="EDGE-PROFILE",
                    environment_profile="dedicated_visible_edge", batch_id="DEBUG",
                    created_at=stamp, gender_set_at=stamp, status="READY", avatar_code="",
@@ -137,8 +127,8 @@ def test_account() -> Account:
 
 
 def main() -> int:
-    base = Path(__file__).resolve().parent
-    parser = argparse.ArgumentParser(description="小红书网页版被动采集：逐一打开笔记详情并读取五类内容字段")
+    base = Path(__file__).resolve().parents[2]
+    parser = argparse.ArgumentParser(description="抖音网页版少量被动采集：可见Edge、结构化字段、标签与本地主题读取")
     limit = parser.add_mutually_exclusive_group()
     limit.add_argument("--items", type=int)
     limit.add_argument("--duration-minutes", type=float,
@@ -149,8 +139,8 @@ def main() -> int:
     parser.add_argument("--login-wait-seconds", type=float, default=0.0,
                         help="首次设置专用资料时等待人工完成登录；登录后同一次运行自动续采")
     parser.add_argument("--output", type=Path,
-                        default=base / "data_xiaohongshu_debug" / datetime.now().strftime("%Y%m%d_%H%M%S"))
-    parser.add_argument("--profile", type=Path, default=base / "runtime/xiaohongshu-edge-profile")
+                        default=base / "data_live_debug" / datetime.now().strftime("%Y%m%d_%H%M%S"))
+    parser.add_argument("--profile", type=Path, default=base / "runtime/douyin-edge-profile")
     args = parser.parse_args()
     if args.items is None and args.duration_minutes is None:
         args.items = 3
@@ -163,9 +153,9 @@ def main() -> int:
 
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    adapter = XiaohongshuAdapter(output_dir=output, profile_dir=args.profile.resolve(),
-                                 login_wait_seconds=args.login_wait_seconds,
-                                 capture_screenshots=args.screenshots)
+    adapter = DouyinAdapter(output_dir=output, profile_dir=args.profile.resolve(),
+                            login_wait_seconds=args.login_wait_seconds,
+                            capture_screenshots=args.screenshots)
     records: list[dict] = []
     started_at = datetime.now().astimezone().isoformat(timespec="seconds")
     started_monotonic = time.monotonic()
@@ -187,18 +177,17 @@ def main() -> int:
             if args.items is not None and position > args.items:
                 break
             raw = adapter.read_current()
+            topic, hits = classify_topic(raw.metadata.get("title_or_text"))
             dwell_seconds = rng.uniform(args.min_dwell_seconds, args.max_dwell_seconds)
             if deadline is not None:
                 dwell_seconds = min(dwell_seconds, deadline - time.monotonic())
-            metadata = raw.metadata.copy()
-            visible_text = "\n".join(filter(None, [metadata.get("title"),
-                                                    metadata.get("caption_text")]))
-            metadata["tags"] = list(dict.fromkeys((metadata.get("tags") or []) +
-                                                   extract_tags(visible_text)))
-            metadata["caption_text"] = strip_tags_from_body(metadata.get("caption_text"))
             record = {"position": position, "captured_at": raw.captured_at,
                       "exposure_token": raw.exposure_token, "evidence_path": raw.evidence_path,
-                      "dwell_seconds": round(dwell_seconds, 3), **metadata}
+                      "topic": topic, "topic_keyword_hits": hits,
+                      "tags": extract_tags(raw.metadata.get("title_or_text")),
+                      "title": extract_title(raw.metadata.get("title_or_text")),
+                      "caption_text": extract_caption_text(raw.metadata.get("title_or_text")),
+                      "dwell_seconds": round(dwell_seconds, 3), **raw.metadata}
             records.append(record)
             with (output / "observations.jsonl").open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(record, ensure_ascii=False) + "\n")

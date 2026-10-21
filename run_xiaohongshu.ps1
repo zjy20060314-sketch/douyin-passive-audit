@@ -14,5 +14,5 @@ $python = if (Test-Path -LiteralPath ".venv\Scripts\python.exe") {
     else { throw "未找到 Python 3.10+；请先运行 setup.ps1。" }
 }
 if (-not $CollectorArgs) { $CollectorArgs = @("--items", "3") }
-& $python "live_xiaohongshu_pilot.py" @CollectorArgs
+& $python -m audit.cli.xiaohongshu @CollectorArgs
 exit $LASTEXITCODE

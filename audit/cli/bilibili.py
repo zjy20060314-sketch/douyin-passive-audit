@@ -167,7 +167,7 @@ def test_account() -> Account:
 
 
 def main() -> int:
-    base = Path(__file__).resolve().parent
+    base = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(description="哔哩哔哩网页版被动采集：逐一打开视频详情并读取五类内容字段")
     limit = parser.add_mutually_exclusive_group()
     limit.add_argument("--items", type=int)
