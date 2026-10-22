@@ -21,7 +21,8 @@ class XiaohongshuAdapter(BasePlatformAdapter):
     def __init__(self, *, output_dir: Path | None = None, profile_dir: Path | None = None,
                  edge_path: Path | None = None, node_path: Path | None = None,
                  node_modules: Path | None = None, open_timeout_seconds: float = 45.0,
-                 login_wait_seconds: float = 0.0, capture_screenshots: bool = False):
+                 login_wait_seconds: float = 0.0, capture_screenshots: bool = False,
+                 site_url: str = "https://www.xiaohongshu.com/explore"):
         self.output_dir = (output_dir or PROJECT_ROOT / "data_live_debug").resolve()
         self.profile_dir = (profile_dir or PROJECT_ROOT / "runtime/xiaohongshu-edge-profile").resolve()
         self.edge_path = edge_path or default_edge_path()
@@ -30,6 +31,7 @@ class XiaohongshuAdapter(BasePlatformAdapter):
         self.open_timeout_seconds = open_timeout_seconds
         self.login_wait_seconds = login_wait_seconds
         self.capture_screenshots = capture_screenshots
+        self.site_url = site_url
         self.process: subprocess.Popen[str] | None = None
         self._stderr_thread: threading.Thread | None = None
         self._stderr_lines: list[str] = []
@@ -89,10 +91,22 @@ class XiaohongshuAdapter(BasePlatformAdapter):
 
     def open_session(self, account: Account, session_id: str) -> None:
         self._session_id, self._position = session_id, 0
-        self._command("open", url="https://www.xiaohongshu.com/explore",
+        self._command("open", url=self.site_url,
                       timeout_ms=round(self.open_timeout_seconds * 1000),
                       login_wait_ms=round(self.login_wait_seconds * 1000),
                       account_id=account.account_id)
+
+    def launch_login_page(self, account: Account, session_id: str) -> dict[str, Any]:
+        """Open Explore without reading or opening a note, so login can happen first."""
+        self._session_id, self._position = session_id, 0
+        return self._command("launch", url=self.site_url,
+                             timeout_ms=round(self.open_timeout_seconds * 1000),
+                             account_id=account.account_id)
+
+    def prepare_session(self) -> None:
+        """Verify login and open the first note only after an explicit start signal."""
+        self._command("prepare", url=self.site_url,
+                      timeout_ms=round(self.open_timeout_seconds * 1000))
 
     def read_current(self) -> RawObservation:
         self._position += 1

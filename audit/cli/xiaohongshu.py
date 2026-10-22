@@ -90,13 +90,16 @@ def write_csv(output: Path, records: list[dict]) -> None:
 
 def write_progress(output: Path, *, status: str, started_at: str, elapsed_seconds: float,
                    records: list[dict], duration_minutes: float | None,
-                   error_code: str | None = None) -> None:
+                   error_code: str | None = None,
+                   start_signal_file: Path | None = None) -> None:
     progress = {"status": status, "started_at": started_at,
                 "updated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
                 "elapsed_seconds": round(elapsed_seconds, 3), "items": len(records),
                 "requested_duration_minutes": duration_minutes,
                 "last_content_id": records[-1]["content_id"] if records else None,
                 "error_code": error_code}
+    if start_signal_file is not None:
+        progress["start_signal_file"] = str(start_signal_file)
     (output / "progress.json").write_text(json.dumps(progress, ensure_ascii=False, indent=2),
                                           encoding="utf-8")
 
@@ -148,9 +151,17 @@ def main() -> int:
     parser.add_argument("--screenshots", action="store_true", help="可选保存逐条截图；默认关闭")
     parser.add_argument("--login-wait-seconds", type=float, default=0.0,
                         help="首次设置专用资料时等待人工完成登录；登录后同一次运行自动续采")
+    parser.add_argument("--start-signal-file", type=Path,
+                        help="先只打开小红书并等待；该文件出现后才检查登录并开始采集计时")
+    parser.add_argument("--start-timeout-seconds", type=float, default=1800.0,
+                        help="等待开始信号的最长秒数，默认30分钟")
     parser.add_argument("--output", type=Path,
                         default=base / "data_xiaohongshu_debug" / datetime.now().strftime("%Y%m%d_%H%M%S"))
     parser.add_argument("--profile", type=Path, default=base / "runtime/xiaohongshu-edge-profile")
+    parser.add_argument("--site-url",
+                        choices=("https://www.xiaohongshu.com/explore", "https://www.rednote.com/"),
+                        default="https://www.xiaohongshu.com/explore",
+                        help="采集站点；国际站登录资料请选择 https://www.rednote.com/")
     args = parser.parse_args()
     if args.items is None and args.duration_minutes is None:
         args.items = 3
@@ -160,17 +171,36 @@ def main() -> int:
         raise ValueError("持续时间必须在0.05到180分钟之间")
     if args.min_dwell_seconds < 1 or args.max_dwell_seconds < args.min_dwell_seconds:
         raise ValueError("随机停留下限至少1秒，且上限不能小于下限")
+    if args.start_timeout_seconds <= 0:
+        raise ValueError("等待开始信号的最长时间必须大于0秒")
 
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     adapter = XiaohongshuAdapter(output_dir=output, profile_dir=args.profile.resolve(),
                                  login_wait_seconds=args.login_wait_seconds,
-                                 capture_screenshots=args.screenshots)
+                                 capture_screenshots=args.screenshots,
+                                 site_url=args.site_url)
     records: list[dict] = []
     started_at = datetime.now().astimezone().isoformat(timespec="seconds")
     started_monotonic = time.monotonic()
     try:
-        adapter.open_session(test_account(), "WEB-DEBUG")
+        if args.start_signal_file is not None:
+            start_signal_file = args.start_signal_file.resolve()
+            if start_signal_file.exists():
+                raise ValueError(f"开始信号文件已存在，请换用新路径: {start_signal_file}")
+            adapter.launch_login_page(test_account(), "WEB-DEBUG")
+            wait_deadline = time.monotonic() + args.start_timeout_seconds
+            while not start_signal_file.exists():
+                if time.monotonic() >= wait_deadline:
+                    raise AuditError("START_SIGNAL_TIMEOUT", "等待登录完成和开始信号超时")
+                write_progress(output, status="WAITING_FOR_LOGIN", started_at=started_at,
+                               elapsed_seconds=time.monotonic() - started_monotonic,
+                               records=records, duration_minutes=args.duration_minutes,
+                               start_signal_file=start_signal_file)
+                time.sleep(1.0)
+            adapter.prepare_session()
+        else:
+            adapter.open_session(test_account(), "WEB-DEBUG")
         collection_started = time.monotonic()
         deadline = (collection_started + args.duration_minutes * 60
                     if args.duration_minutes is not None else None)

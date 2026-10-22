@@ -39,6 +39,14 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\run_bilibili.ps1 --duration-minutes 30 --min-dwell-seconds 3 --max-dwell-seconds 15
 ```
 
+登录后跳转到 RedNote 国际站时，显式指定站点入口：
+
+```powershell
+.\run_xiaohongshu.ps1 --site-url https://www.rednote.com/ --duration-minutes 30 --min-dwell-seconds 3 --max-dwell-seconds 15
+```
+
+RedNote 与小红书国内站使用同一套笔记字段和被动采集边界，浏览器登录资料仍保存在本机 `runtime/`，不会上传到仓库。
+
 默认不截图。只有显式传入 `--screenshots` 时才保存截图。
 
 默认输出目录：

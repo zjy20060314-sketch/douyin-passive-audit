@@ -9,6 +9,7 @@ let context;
 let page;
 let lastContentId = null;
 const visited = new Set();
+let siteUrl = 'https://www.xiaohongshu.com/explore';
 
 function fail(code, message, retryable = false) {
   const error = new Error(message);
@@ -37,8 +38,17 @@ async function ensureBrowser() {
 async function loginVisible() {
   return page.evaluate(() => [...document.querySelectorAll('button,a,div')].some(el => {
     const r = el.getBoundingClientRect();
-    return (el.innerText || '').trim() === '登录' && r.width > 0 && r.height > 0;
+    const text = (el.innerText || '').trim().toLowerCase();
+    return ['登录', 'log in', 'login'].includes(text) && r.width > 0 && r.height > 0;
   }));
+}
+
+function sameSite(current, target) {
+  try {
+    return new URL(current).hostname === new URL(target).hostname;
+  } catch (_) {
+    return false;
+  }
 }
 
 async function detailMetadata() {
@@ -104,8 +114,10 @@ async function openNextCard() {
     const candidates = await page.evaluate(visitedIds => {
       const seen = new Set(visitedIds);
       const rows = [];
-      for (const a of document.querySelectorAll('a[href*="/explore/"]')) {
-        const m = String(a.href || '').match(/\/explore\/([0-9a-zA-Z]+)/);
+      for (const a of document.querySelectorAll(
+        'a[href*="/explore/"], a[href*="/discovery/item/"]'
+      )) {
+        const m = String(a.href || '').match(/\/(?:explore|discovery\/item)\/([0-9a-zA-Z]+)/);
         if (!m || seen.has(m[1])) continue;
         const r = a.getBoundingClientRect();
         if (r.width < 80 || r.height < 80 || r.bottom <= 80 || r.top >= innerHeight) continue;
@@ -155,9 +167,35 @@ async function returnToExplore() {
 
 async function handle(req) {
   await ensureBrowser();
+  if (req.action === 'launch') {
+    siteUrl = req.url || siteUrl;
+    if (!sameSite(page.url(), siteUrl) || noteId(page.url())) {
+      await page.goto(siteUrl, {waitUntil: 'domcontentloaded', timeout: req.timeout_ms || 45000});
+    }
+    await page.bringToFront();
+    await page.waitForTimeout(1200);
+    return {page_ready: true, needs_login: await loginVisible(), page_url: page.url()};
+  }
+  if (req.action === 'prepare') {
+    siteUrl = req.url || siteUrl;
+    await page.bringToFront();
+    if (noteId(page.url())) await returnToExplore();
+    if (!sameSite(page.url(), siteUrl)) {
+      await page.goto(siteUrl, {
+        waitUntil: 'domcontentloaded', timeout: req.timeout_ms || 45000,
+      });
+      await page.waitForTimeout(2200);
+    }
+    if (await loginVisible()) {
+      throw fail('LOGIN_REQUIRED', 'RedNote/小红书专用Edge资料尚未登录，请先完成登录');
+    }
+    const id = await openNextCard();
+    return {detail_ready: true, content_id: id, page_url: page.url()};
+  }
   if (req.action === 'open') {
-    if (!page.url().startsWith('https://www.xiaohongshu.com/explore')) {
-      await page.goto(req.url, {waitUntil: 'domcontentloaded', timeout: req.timeout_ms || 45000});
+    siteUrl = req.url || siteUrl;
+    if (!sameSite(page.url(), siteUrl) || noteId(page.url())) {
+      await page.goto(siteUrl, {waitUntil: 'domcontentloaded', timeout: req.timeout_ms || 45000});
     }
     await page.bringToFront();
     await page.waitForTimeout(2200);
@@ -169,7 +207,7 @@ async function handle(req) {
         needsLogin = await loginVisible();
       }
     }
-    if (needsLogin) throw fail('LOGIN_REQUIRED', '小红书专用Edge资料尚未登录，请先完成登录');
+    if (needsLogin) throw fail('LOGIN_REQUIRED', 'RedNote/小红书专用Edge资料尚未登录，请先完成登录');
     if (noteId(page.url())) await returnToExplore();
     const id = await openNextCard();
     return {detail_ready: true, content_id: id, page_url: page.url()};
