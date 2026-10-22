@@ -74,21 +74,35 @@ async function detailMetadata() {
       }
       return null;
     };
-    const title = pickText([
-      '#detail-title', '.note-content .title', '.note-detail-mask .title',
-      '[class*="note"] [class*="title"]'
-    ]);
-    const captionText = pickText([
-      '#detail-desc', '.note-content .desc', '.note-detail-mask .desc',
-      '[class*="note"] [class*="desc"]'
-    ]);
-    const tagLinks = [...document.querySelectorAll('a[href]')].filter(isVisible).filter(a => {
+    const noteRoots = [...document.querySelectorAll('.note-content')].filter(isVisible);
+    const noteRoot = noteRoots.find(root => root.querySelector('.title, .desc')) || null;
+    const rootText = (selector) => {
+      const element = noteRoot?.querySelector(selector);
+      const value = (element?.innerText || element?.textContent || '').trim();
+      return value || null;
+    };
+    const meta = (selector) => document.querySelector(selector)?.content?.trim() || null;
+    const title = rootText('.title') || pickText([
+      '#detail-title', '.note-detail-mask .title', '[class*="note"] [class*="title"]'
+    ]) || meta('meta[property="og:title"]')?.replace(/\s+-\s+rednote\s*$/i, '') || null;
+    const captionText = rootText('.desc') || pickText([
+      '#detail-desc', '.note-detail-mask .desc', '[class*="note"] [class*="desc"]'
+    ]) || meta('meta[property="og:description"]') || meta('meta[name="description"]');
+    const tagScope = noteRoot?.querySelector('.desc') || noteRoot || document;
+    const tagLinks = [...tagScope.querySelectorAll('a.tag, a[href]')].filter(isVisible).filter(a => {
       const text = (a.innerText || a.textContent || '').trim();
       return text.startsWith('#') && text.length > 1 && text.length < 100;
     });
     const tags = [];
     for (const link of tagLinks) {
       const tag = (link.innerText || link.textContent || '').trim().replace(/^#+/, '');
+      if (tag && !tags.includes(tag)) tags.push(tag);
+    }
+    for (const match of String(captionText || '').matchAll(/#([^#\s，。！？、；：,.!?;:]+)/g)) {
+      if (match[1] && !tags.includes(match[1])) tags.push(match[1]);
+    }
+    for (const keyword of String(meta('meta[name="keywords"]') || '').split(/[,，]/)) {
+      const tag = keyword.trim().replace(/^#+/, '');
       if (tag && !tags.includes(tag)) tags.push(tag);
     }
     const visibleVideos = [...document.querySelectorAll('video')].filter(isVisible);
@@ -140,6 +154,16 @@ async function openNextCard() {
           if (current) {
             visited.add(current);
             lastContentId = current;
+            await page.waitForFunction(() => {
+              const roots = [...document.querySelectorAll('.note-content')];
+              return roots.some(root => {
+                const rect = root.getBoundingClientRect();
+                const title = (root.querySelector('.title')?.textContent || '').trim();
+                const desc = (root.querySelector('.desc')?.textContent || '').trim();
+                return rect.width > 0 && rect.height > 0 && title && desc;
+              });
+            }, null, {timeout: 7000}).catch(() => null);
+            await page.waitForTimeout(350);
             return current;
           }
         }

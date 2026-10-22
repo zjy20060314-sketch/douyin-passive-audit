@@ -53,6 +53,13 @@ def main() -> int:
         dwell = row.get("dwell_seconds")
         if not isinstance(dwell, (int, float)) or not 3 <= dwell <= 15:
             errors.append(f"第{index}条停留时间异常：{dwell!r}")
+    if args.platform == "xiaohongshu" and records:
+        caption_count = sum(bool(row.get("caption_text")) for row in records)
+        tag_count = sum(bool(row.get("tags")) for row in records)
+        if caption_count == 0:
+            errors.append("整批小红书记录正文全部为空，疑似详情内容尚未加载或解析失效")
+        if tag_count == 0:
+            errors.append("整批小红书记录Tags全部为空，疑似标签解析失效")
     actions = summary.get("passive_actions") or {}
     for action in FORBIDDEN_ACTIONS:
         if actions.get(action) != 0:
